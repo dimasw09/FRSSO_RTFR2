@@ -36,12 +36,18 @@ def predict_face(img, threshold=0.85):
     predictions = model.predict(img)
     max_index = np.argmax(predictions[0])
     confidence = predictions[0][max_index]
+
+    print(f"Prediksi: {predictions}")
+    print(f"Index dengan confidence tertinggi: {max_index}")
+    print(f"Confidence: {confidence}")
     
     if confidence < threshold:
         return "unknown", confidence
     else:
         label = labels[max_index]
         return label, confidence
+
+
 
 # Fungsi untuk memproses gambar dari kamera
 def process_from_camera():

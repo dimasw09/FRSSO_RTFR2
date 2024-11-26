@@ -96,4 +96,3 @@ print(f"Validation Accuracy: {val_accuracy}")
 # Menyimpan riwayat pelatihan ke file JSON
 with open('history.json', 'w') as f:
     json.dump(history.history, f)
-
