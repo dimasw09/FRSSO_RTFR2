@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center">Face Recognition System</h1>
+
+        <div class="mt-4">
+            <h3>Capture Face</h3>
+            <form id="capture-form">
+                <div class="mb-3">
+                    <label for="label-name" class="form-label">Label Name</label>
+                    <input type="text" class="form-control" id="label-name" placeholder="Enter Label Name">
+                </div>
+                <div class="mb-3">
+                    <label for="camera-feed" class="form-label">Camera Feed</label>
+                    <video id="camera-feed" autoplay class="w-100" style="border: 1px solid #ccc; max-height: 300px;"></video>
+                    <canvas id="capture-canvas" class="d-none"></canvas>
+                </div>
+                <button type="button" class="btn btn-primary" onclick="captureImage()">Capture</button>
+                <button type="button" class="btn btn-success mt-2" onclick="submitCapture()">Submit</button>
+            </form>
+        </div>
+
+        <div class="mt-5">
+            <h3>Train Model</h3>
+            <button type="button" class="btn btn-success" onclick="trainModel()">Train Now</button>
+        </div>
+
+        <div class="mt-5">
+            <h3>Predict Face</h3>
+            <form id="predict-form">
+                <div class="mb-3">
+                    <label for="predict-image" class="form-label">Upload Image</label>
+                    <input type="file" class="form-control" id="predict-image" accept="image/*">
+                </div>
+                <button type="button" class="btn btn-warning" onclick="predictFace()">Predict</button>
+            </form>
+            <div class="mt-3" id="prediction-result"></div>
+        </div>
+    </div>
+
+    <script>
+        const video = document.getElementById('camera-feed');
+        const canvas = document.getElementById('capture-canvas');
+        let capturedImage = null;
+
+        // Start the camera feed
+        async function startCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+            } catch (error) {
+                alert('Error accessing the camera: ' + error.message);
+            }
+        }
+
+        // Capture the current frame from the video feed
+        function captureImage() {
+            const labelName = document.getElementById('label-name').value;
+            if (!labelName) {
+                alert('Please provide a label name.');
+                return;
+            }
+
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            capturedImage = canvas.toDataURL('image/png'); // Save the captured image as a base64 string
+            alert('Image captured successfully!');
+        }
+
+        // Submit the captured image
+        async function submitCapture() {
+            if (!capturedImage) {
+                alert('Please capture an image first.');
+                return;
+            }
+
+            const labelName = document.getElementById('label-name').value;
+
+            const formData = new FormData();
+            formData.append('label_name', labelName);
+            formData.append('image', capturedImage);
+
+            const response = await fetch('/capture', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+            alert(result.message || result.error);
+        }
+
+        // Train the model
+        async function trainModel() {
+            const response = await fetch('/train', {
+                method: 'POST'
+            });
+
+            const result = await response.json();
+            alert(result.message || result.error);
+        }
+
+        // Predict the face
+        async function predictFace() {
+            const fileInput = document.getElementById('predict-image');
+
+            if (!fileInput.files[0]) {
+                alert('Please select an image.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', fileInput.files[0]);
+
+            const response = await fetch('/predict', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+            const resultDiv = document.getElementById('prediction-result');
+
+            if (result.error) {
+                resultDiv.textContent = result.error;
+                resultDiv.className = 'text-danger';
+            } else {
+                resultDiv.textContent = `Label: ${result.label}, Confidence: ${result.confidence.toFixed(2)}`;
+                resultDiv.className = 'text-success';
+            }
+        }
+
+        // Initialize the camera feed
+        startCamera();
+    </script>
+</body>
+</html>
