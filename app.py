@@ -29,18 +29,19 @@ if os.path.exists(CLASS_INDICES_PATH):
         class_indices = json.load(f)
         labels = {v: k for k, v in class_indices.items()}
 
-def save_face(image_path, label_name):
+def save_faces(image_paths, label_name):
     detector = MTCNN()
-    img = cv2.imread(image_path)
-    faces = detector.detect_faces(img)
     label_dir = os.path.join(DATASET_FOLDER, label_name)
     os.makedirs(label_dir, exist_ok=True)
 
-    for i, face in enumerate(faces):
-        x, y, w, h = face['box']
-        face_img = img[y:y+h, x:x+w]
-        face_path = os.path.join(label_dir, f"{label_name}_{i+1}.jpg")
-        cv2.imwrite(face_path, face_img)
+    for image_path in image_paths:
+        img = cv2.imread(image_path)
+        faces = detector.detect_faces(img)
+        for i, face in enumerate(faces):
+            x, y, w, h = face['box']
+            face_img = img[y:y+h, x:x+w]
+            face_path = os.path.join(label_dir, f"{label_name}_{os.path.basename(image_path).split('.')[0]}_{i+1}.jpg")
+            cv2.imwrite(face_path, face_img)
 
 @app.route('/')
 def index():
@@ -56,14 +57,20 @@ def capture():
     if not files:
         return jsonify({"error": "No images provided."}), 400
 
+    saved_filepaths = []
     for key, file in files.items():
         if file:
             filepath = os.path.join(UPLOAD_FOLDER, file.filename)
             file.save(filepath)
-            save_face(filepath, label_name)  # Save the face detected from the image
+            saved_filepaths.append(filepath)
 
-    return jsonify({"message": "10 images captured and saved successfully."})
+    save_faces(saved_filepaths, label_name)  # Save the faces from all 10 images
 
+    # Cleanup uploaded files
+    for filepath in saved_filepaths:
+        os.remove(filepath)
+
+    return jsonify({"message": f"{len(saved_filepaths)} images captured and saved successfully."})
 
 @app.route('/train', methods=['POST'])
 def train():
@@ -146,7 +153,7 @@ def predict():
         img = np.expand_dims(img, axis=0)
         img = img / 255.0
 
-        predictions = model.predict(img)    
+        predictions = model.predict(img)
         max_index = np.argmax(predictions[0])
         confidence = predictions[0][max_index]
 
