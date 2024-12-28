@@ -48,14 +48,22 @@ def index():
 
 @app.route('/capture', methods=['POST'])
 def capture():
-    label_name = request.form['label_name']
-    file = request.files['image']
-    if file:
-        filepath = os.path.join(UPLOAD_FOLDER, file.filename)
-        file.save(filepath)
-        save_face(filepath, label_name)
-        return jsonify({"message": "Image captured and saved successfully."})
-    return jsonify({"error": "No file provided."}), 400
+    label_name = request.form.get('label_name')
+    if not label_name:
+        return jsonify({"error": "Label name is missing."}), 400
+
+    files = request.files
+    if not files:
+        return jsonify({"error": "No images provided."}), 400
+
+    for key, file in files.items():
+        if file:
+            filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+            file.save(filepath)
+            save_face(filepath, label_name)  # Save the face detected from the image
+
+    return jsonify({"message": "10 images captured and saved successfully."})
+
 
 @app.route('/train', methods=['POST'])
 def train():
@@ -138,7 +146,7 @@ def predict():
         img = np.expand_dims(img, axis=0)
         img = img / 255.0
 
-        predictions = model.predict(img)
+        predictions = model.predict(img)    
         max_index = np.argmax(predictions[0])
         confidence = predictions[0][max_index]
 

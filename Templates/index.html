@@ -76,28 +76,61 @@
             capturedImage = canvas.toDataURL('image/png'); // Save the captured image as a base64 string
             alert('Image captured successfully!');
         }
+        let capturedImages = [];
 
-        // Submit the captured image
-        async function submitCapture() {
-            if (!capturedImage) {
-                alert('Please capture an image first.');
-                return;
-            }
+async function captureImage() {
+    const labelName = document.getElementById('label-name').value;
+    if (!labelName.trim()) {
+        alert('Please provide a valid label name.');
+        return;
+    }
 
-            const labelName = document.getElementById('label-name').value;
+    const context = canvas.getContext('2d');
+    capturedImages = []; // Clear previously captured images
 
-            const formData = new FormData();
-            formData.append('label_name', labelName);
-            formData.append('image', capturedImage);
+    for (let i = 0; i < 10; i++) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            const response = await fetch('/capture', {
-                method: 'POST',
-                body: formData
-            });
+        const base64Image = canvas.toDataURL('image/png');
+        capturedImages.push(base64Image); // Store the base64 data for each frame
 
-            const result = await response.json();
-            alert(result.message || result.error);
-        }
+        // Wait 200ms before capturing the next frame
+        await new Promise(resolve => setTimeout(resolve, 200));
+    }
+
+    alert('10 images captured successfully!');
+}
+
+
+async function submitCapture() {
+    if (capturedImages.length === 0) {
+        alert('Please capture images first.');
+        return;
+    }
+
+    const labelName = document.getElementById('label-name').value;
+
+    const formData = new FormData();
+    formData.append('label_name', labelName);
+
+    // Convert all base64 images to blobs and append them to the FormData
+    for (let i = 0; i < capturedImages.length; i++) {
+        const base64Response = await fetch(capturedImages[i]);
+        const blob = await base64Response.blob();
+        formData.append(`image_${i + 1}`, blob, `captured_image_${i + 1}.png`);
+    }
+
+    const response = await fetch('/capture', {
+        method: 'POST',
+        body: formData
+    });
+
+    const result = await response.json();
+    alert(result.message || result.error);
+}
+
 
         // Train the model
         async function trainModel() {
