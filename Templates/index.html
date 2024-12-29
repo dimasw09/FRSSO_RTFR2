@@ -110,7 +110,7 @@ async function submitCapture() {
         return;
     }
 
-    const labelName = document.getElementById('label-name').value;
+    const labelName = documentx.getElementById('label-name').value;
 
     const formData = new FormData();
     formData.append('label_name', labelName);
@@ -119,7 +119,7 @@ async function submitCapture() {
     for (let i = 0; i < capturedImages.length; i++) {
         const base64Response = await fetch(capturedImages[i]);
         const blob = await base64Response.blob();
-        formData.append(`image_${i + 1}`, blob, `captured_image_${i + 1}.png`);
+        formData.append(`image_${i + 1}`, blob, ` _${i + 1}.png`);
     }
 
     const response = await fetch('/capture', {
