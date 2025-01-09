@@ -48,7 +48,7 @@
     <script>
         const video = document.getElementById('camera-feed');
         const canvas = document.getElementById('capture-canvas');
-        let capturedImage = null;
+        let capturedImages = [];
 
         // Start the camera feed
         async function startCamera() {
@@ -60,93 +60,75 @@
             }
         }
 
-        // Capture the current frame from the video feed
-        function captureImage() {
-            const labelName = document.getElementById('label-name').value;
+        async function captureImage() {
+            const labelName = document.getElementById('label-name').value.trim();
             if (!labelName) {
-                alert('Please provide a label name.');
+                alert('Please provide a valid label name.');
                 return;
             }
 
             const context = canvas.getContext('2d');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            capturedImages = [];
 
-            capturedImage = canvas.toDataURL('image/png'); // Save the captured image as a base64 string
-            alert('Image captured successfully!');
+            for (let i = 0; i < 10; i++) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                const base64Image = canvas.toDataURL('image/png');
+                capturedImages.push(base64Image);
+
+                await new Promise(resolve => setTimeout(resolve, 200));
+            }
+
+            alert('10 images captured successfully!');
         }
-        let capturedImages = [];
 
-async function captureImage() {
-    const labelName = document.getElementById('label-name').value;
-    if (!labelName.trim()) {
-        alert('Please provide a valid label name.');
-        return;
-    }
+        async function submitCapture() {
+            if (capturedImages.length === 0) {
+                alert('Please capture images first.');
+                return;
+            }
 
-    const context = canvas.getContext('2d');
-    capturedImages = []; // Clear previously captured images
+            const labelName = document.getElementById('label-name').value.trim();
+            if (!labelName) {
+                alert('Label name is missing.');
+                return;
+            }
 
-    for (let i = 0; i < 10; i++) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const formData = new FormData();
+            formData.append('label_name', labelName);
 
-        const base64Image = canvas.toDataURL('image/png');
-        capturedImages.push(base64Image); // Store the base64 data for each frame
+            for (let i = 0; i < capturedImages.length; i++) {
+                const base64Response = await fetch(capturedImages[i]);
+                const blob = await base64Response.blob();
+                formData.append(`image_${i + 1}`, blob, `image_${i + 1}.png`);
+            }
 
-        // Wait 200ms before capturing the next frame
-        await new Promise(resolve => setTimeout(resolve, 200));
-    }
+            try {
+                const response = await fetch('/capture', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                alert(result.message || result.error);
+            } catch (error) {
+                alert('Error submitting capture: ' + error.message);
+            }
+        }
 
-    alert('10 images captured successfully!');
-}
-
-
-async function submitCapture() {
-    if (capturedImages.length === 0) {
-        alert('Please capture images first.');
-        return;
-    }
-
-    const labelName = documentx.getElementById('label-name').value;
-
-    const formData = new FormData();
-    formData.append('label_name', labelName);
-
-    // Convert all base64 images to blobs and append them to the FormData
-    for (let i = 0; i < capturedImages.length; i++) {
-        const base64Response = await fetch(capturedImages[i]);
-        const blob = await base64Response.blob();
-        formData.append(`image_${i + 1}`, blob, ` _${i + 1}.png`);
-    }
-
-    const response = await fetch('/capture', {
-        method: 'POST',
-        body: formData
-    });
-
-    const result = await response.json();
-    alert(result.message || result.error);
-}
-
-
-
-        // Train the model
         async function trainModel() {
-            const response = await fetch('/train', {
-                method: 'POST'
-            });
-
-            const result = await response.json();
-            alert(result.message || result.error);
+            try {
+                const response = await fetch('/train', { method: 'POST' });
+                const result = await response.json();
+                alert(result.message || result.error);
+            } catch (error) {
+                alert('Error training model: ' + error.message);
+            }
         }
 
-        // Predict the face
         async function predictFace() {
             const fileInput = document.getElementById('predict-image');
-
             if (!fileInput.files[0]) {
                 alert('Please select an image.');
                 return;
@@ -155,20 +137,23 @@ async function submitCapture() {
             const formData = new FormData();
             formData.append('image', fileInput.files[0]);
 
-            const response = await fetch('/predict', {
-                method: 'POST',
-                body: formData
-            });
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+                const resultDiv = document.getElementById('prediction-result');
 
-            const result = await response.json();
-            const resultDiv = document.getElementById('prediction-result');
-
-            if (result.error) {
-                resultDiv.textContent = result.error;
-                resultDiv.className = 'text-danger';
-            } else {
-                resultDiv.textContent = `Label: ${result.label}, Confidence: ${result.confidence.toFixed(2)}`;
-                resultDiv.className = 'text-success';
+                if (result.error) {
+                    resultDiv.textContent = result.error;
+                    resultDiv.className = 'text-danger';
+                } else {
+                    resultDiv.textContent = `Label: ${result.label}, Confidence: ${result.confidence.toFixed(2)}`;
+                    resultDiv.className = 'text-success';
+                }
+            } catch (error) {
+                alert('Error predicting face: ' + error.message);
             }
         }
 

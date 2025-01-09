@@ -3,8 +3,6 @@ import os
 import cv2
 import numpy as np
 import tensorflow as tf
-# from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.utils import img_to_array, load_img
 from keras_preprocessing.image import ImageDataGenerator
 from mtcnn import MTCNN
 import json
@@ -15,11 +13,9 @@ DATASET_FOLDER = 'dataset/faces'
 MODEL_PATH = 'face_recognition_model_best.keras'
 CLASS_INDICES_PATH = 'class_indices.json'
 
-# Ensure directories exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(DATASET_FOLDER, exist_ok=True)
 
-# Load model and class indices if available
 model = None
 labels = {}
 if os.path.exists(MODEL_PATH):
@@ -64,9 +60,8 @@ def capture():
             file.save(filepath)
             saved_filepaths.append(filepath)
 
-    save_faces(saved_filepaths, label_name)  # Save the faces from all 10 images
+    save_faces(saved_filepaths, label_name)
 
-    # Cleanup uploaded files
     for filepath in saved_filepaths:
         os.remove(filepath)
 
@@ -143,11 +138,14 @@ def predict():
     if not model:
         return jsonify({"error": "Model not loaded. Train the model first."}), 400
 
-    file = request.files['image']
-    if file:
-        filepath = os.path.join(UPLOAD_FOLDER, file.filename)
-        file.save(filepath)
+    file = request.files.get('image')
+    if not file:
+        return jsonify({"error": "No file provided."}), 400
 
+    filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+    file.save(filepath)
+
+    try:
         img = cv2.imread(filepath)
         img = cv2.resize(img, (150, 150))
         img = np.expand_dims(img, axis=0)
@@ -160,10 +158,10 @@ def predict():
         if confidence < 0.6:
             return jsonify({"label": "unknown", "confidence": float(confidence)})
         else:
-            label = labels[max_index]
+            label = labels.get(max_index, "unknown")
             return jsonify({"label": label, "confidence": float(confidence)})
-
-    return jsonify({"error": "No file provided."}), 400
+    finally:
+        os.remove(filepath)
 
 if __name__ == '__main__':
     app.run(debug=True)
