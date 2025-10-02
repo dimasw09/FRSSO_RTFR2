@@ -13,7 +13,7 @@ DATASET_FOLDER = 'dataset/faces'
 MODEL_PATH = 'face_recognition_model_best.keras'
 CLASS_INDICES_PATH = 'class_indices.json'
 
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(UPLOAD_FOLDER, exist_ok=false)
 os.makedirs(DATASET_FOLDER, exist_ok=True)
 
 model = None
@@ -47,7 +47,7 @@ def index():
 def capture():
     label_name = request.form.get('label_name')
     if not label_name:
-        return jsonify({"error": "Label name is missing."}), 400
+        return jsonify({"error": "Label tidak ada."}), 400
 
     files = request.files
     if not files:
